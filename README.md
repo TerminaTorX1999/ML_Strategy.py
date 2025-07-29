@@ -1,1 +1,1 @@
-# ML_Strategy.py
+This script implements a machine learning trading strategy using XGBoost. It engineers features like 20-day EMA, RSI, and Bollinger Bands to predict the next day’s price movement. Hyperparameter tuning is done with Randomized Search to optimize model performance. The strategy is evaluated using classification metrics and compared against a buy-and-hold benchmark.

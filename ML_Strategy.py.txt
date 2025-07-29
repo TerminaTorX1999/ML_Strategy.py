@@ -1,0 +1,57 @@
+import pandas as pd
+import numpy as np
+from ta.trend import EMAIndicator, MACD
+from ta.momentum import RSIIndicator
+from ta.volatility import BollingerBands
+from xgboost import XGBClassifier
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import classification_report, confusion_matrix
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+# Load your data
+# Make sure your DataFrame 'df' has a 'price' column (closing price)
+# For example:
+# df = pd.read_csv('your_price_data.csv')
+
+# Feature Engineering
+df["20_ema"] = EMAIndicator(close=df["price"], window=20).ema_indicator()
+df["50_ema"] = EMAIndicator(close=df["price"], window=50).ema_indicator()
+df["rsi"] = RSIIndicator(close=df["price"], window=14).rsi()
+macd = MACD(close=df["price"])
+df["macd"] = macd.macd()
+df["macd_signal"] = macd.macd_signal()
+bb = BollingerBands(close=df["price"], window=20)
+df["bb_hband"] = bb.bollinger_hband()
+df["bb_lband"] = bb.bollinger_lband()
+
+# Target: 1 if next day's price is higher than today, else 0
+df["returns"] = df["price"].pct_change().shift(-1)
+df["target"] = (df["returns"] > 0).astype(int)
+
+# Drop rows with NaN (due to indicators calculations)
+df.dropna(inplace=True)
+
+# Features to use
+features = df[["20_ema", "50_ema", "rsi", "macd", "macd_signal", "bb_hband", "bb_lband"]]
+target = df["target"]
+
+# Split dataset
+X_train, X_test, y_train, y_test = train_test_split(features, target, test_size=0.2, random_state=42, shuffle=False)
+
+# Train XGBoost classifier
+model = XGBClassifier(use_label_encoder=False, eval_metric='logloss', random_state=42)
+model.fit(X_train, y_train)
+
+# Predictions
+y_pred = model.predict(X_test)
+
+# Evaluate
+print("Confusion Matrix:\n", confusion_matrix(y_test, y_pred))
+print("\nClassification Report:\n", classification_report(y_test, y_pred))
+
+# Plot feature importance
+plt.figure(figsize=(10,6))
+sns.barplot(x=features.columns, y=model.feature_importances_)
+plt.title("Feature Importance")
+plt.show()
